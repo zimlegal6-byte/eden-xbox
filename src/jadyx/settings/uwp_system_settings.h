@@ -23,6 +23,11 @@ ResolvedSystem ApplySystemSettings();
 /// thread while a game runs (GPU::RunOnGpuThread), the thread that reads them.
 void ApplyUpscaling(Upscaling upscaling);
 
+// Per-title upscaling overrides, keyed by the Switch program ID.
+// Missing or invalid entries follow the global preference.
+Upscaling LoadGameUpscaling(std::uint64_t program_id, Upscaling fallback);
+bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling);
+
 /// Renames the active profile to the saved user name (the default one when none is saved), before
 /// a game starts. Returns false when the profile could not be written.
 bool ApplyUserName(Service::Account::ProfileManager& profiles, std::wstring_view name);

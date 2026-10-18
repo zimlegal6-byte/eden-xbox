@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "jadyx/settings/uwp_system_settings.h"
 
+#include <string>
+
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.System.UserProfile.h>
@@ -126,8 +128,9 @@ Upscaling LoadGameUpscaling(std::uint64_t program_id, Upscaling fallback) {
     try {
         const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
         const auto key = GameUpscalingKey(program_id);
-        if (!values.HasKey(key)) return fallback;
-        return UpscalingFromValue(winrt::unbox_value<int32_t>(values.Lookup(key))).value_or(fallback);
+        const winrt::hstring property_key{key};
+        if (!values.HasKey(property_key)) return fallback;
+        return UpscalingFromValue(winrt::unbox_value<int32_t>(values.Lookup(property_key))).value_or(fallback);
     } catch (...) {
         return fallback;
     }
@@ -137,7 +140,8 @@ bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling) {
     if (program_id == 0 || !UpscalingFromValue(static_cast<int32_t>(upscaling))) return false;
     try {
         const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
-        values.Insert(GameUpscalingKey(program_id), winrt::box_value(static_cast<int32_t>(upscaling)));
+        values.Insert(winrt::hstring{GameUpscalingKey(program_id)},
+                       winrt::box_value(static_cast<int32_t>(upscaling)));
         return true;
     } catch (...) {
         return false;

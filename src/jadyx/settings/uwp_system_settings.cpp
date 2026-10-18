@@ -22,6 +22,10 @@ constexpr auto PulseSessionsKey = L"system_pulse_sessions";
 constexpr auto PlayTimeKey = L"system_track_play_time";
 constexpr auto UpscalingKey = L"system_upscaling";
 
+std::wstring GameUpscalingKey(std::uint64_t program_id) {
+    return L"game_upscaling_" + std::to_wstring(program_id);
+}
+
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
 template <typename T>
@@ -115,6 +119,29 @@ void ApplyUpscaling(Upscaling upscaling) {
     const UpscalingSettings values = ToSettings(upscaling);
     Settings::values.scaling_filter.SetValue(values.filter);
     Settings::values.fsr_sharpening_slider.SetValue(values.fsr_sharpening_slider);
+}
+
+Upscaling LoadGameUpscaling(std::uint64_t program_id, Upscaling fallback) {
+    if (program_id == 0) return fallback;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        const auto key = GameUpscalingKey(program_id);
+        if (!values.HasKey(key)) return fallback;
+        return UpscalingFromValue(winrt::unbox_value<int32_t>(values.Lookup(key))).value_or(fallback);
+    } catch (...) {
+        return fallback;
+    }
+}
+
+bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling) {
+    if (program_id == 0 || !UpscalingFromValue(static_cast<int32_t>(upscaling))) return false;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        values.Insert(GameUpscalingKey(program_id), winrt::box_value(static_cast<int32_t>(upscaling)));
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 bool ApplyUserName(Service::Account::ProfileManager& profiles, std::wstring_view name) {

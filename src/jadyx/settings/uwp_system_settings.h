@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
+#include <cstdint>
 #include "jadyx/settings/system_settings.h"
 
 namespace Service::Account {

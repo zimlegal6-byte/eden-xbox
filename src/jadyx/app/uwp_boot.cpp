@@ -758,7 +758,9 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     const u64 program_id = system.GetApplicationProcessProgramID();
     // A per-game choice overrides the global preference. An explicit boot.cfg upscaling
     // setting remains the diagnostic override and takes precedence over saved per-game choices.
-    const Upscaling game_upscaling = LoadGameUpscaling(program_id, LoadSystemSettings().upscaling);
+    const Upscaling game_upscaling = config.upscaling
+                                           ? *config.upscaling
+                                           : LoadGameUpscaling(program_id, LoadSystemSettings().upscaling);
     if (!config.upscaling && program_id != 0) {
         system.GPU().RunOnGpuThread([game_upscaling] { ApplyUpscaling(game_upscaling); });
         WriteDiag("step: per-game upscaling loaded for title " + std::to_string(program_id));

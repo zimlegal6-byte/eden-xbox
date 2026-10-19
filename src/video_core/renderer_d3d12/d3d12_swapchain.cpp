@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <atomic>
 #include <dxgi1_3.h>
 
 #include "common/logging.h"
@@ -15,7 +16,16 @@ namespace {
 /// device): the frame is dropped, and a lost device is reported by the next submission.
 constexpr DWORD FRAME_WAIT_TIMEOUT_MS = 1000;
 
+/// Counts successful DXGI Present calls for the active process. This is deliberately named as
+/// calls, not displayed frames: DXGI success does not prove that a visible, non-black image reached
+/// the panel. It is an objective signal for the black-screen diagnostics layer.
+std::atomic<std::uint64_t> successful_present_calls{0};
+
 } // Anonymous namespace
+
+std::uint64_t SuccessfulPresentCalls() noexcept {
+    return successful_present_calls.load(std::memory_order_relaxed);
+}
 
 Swapchain::Swapchain(const Device& device, IUnknown* core_window, u32 width_, u32 height_)
     : width{width_}, height{height_} {
@@ -91,6 +101,7 @@ void Swapchain::Present() {
     const VideoCore::FrameTrace::ScopedSpan trace_present{
         VideoCore::FrameTrace::Event::HostPresentLong, 0};
     ThrowIfFailed(swapchain->Present(1, 0), "IDXGISwapChain::Present");
+    successful_present_calls.fetch_add(1, std::memory_order_relaxed);
 }
 
 } // namespace D3D12

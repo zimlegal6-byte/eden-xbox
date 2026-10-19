@@ -159,11 +159,61 @@ LaunchResolution ResolveLaunchContent(FileSys::VfsFilesystem& vfs, const std::st
     if (programs.empty()) return result;
     result.application = GetBaseTitleID(programs.front().title_id);
     result.version = BaseVersion(base, result.application);
-    const auto store = DefaultStore(); Catalog catalog;
+    auto store = DefaultStore(); Catalog catalog;
     result.error = store.Load(catalog);
     if (result.error != Error::None) return result;
     result.managed = std::find(catalog.managed_applications.begin(), catalog.managed_applications.end(), result.application) != catalog.managed_applications.end() || std::any_of(catalog.revisions.begin(), catalog.revisions.end(),
         [&](const auto& r) { return r.application == result.application; });
+
+    // Convenience import: if an update NSP is placed beside the selected base game,
+    // inspect it and import only update content whose application ID matches this game.
+    // Keep the original file untouched; the validated copy is stored in the managed content store.
+    // Never auto-import base games, DLC, unsupported files, or updates for another title.
+    if (!base_path.empty() && !stop.stop_requested()) {
+        const auto slash = base_path.find_last_of('/');
+        if (slash != std::string::npos) {
+            const auto folder_path = base_path.substr(0, slash);
+            try {
+                const auto siblings = BrowseStorageFolder(folder_path, stop);
+                unsigned inspected_files = 0;
+                for (const auto& sibling : siblings) {
+                    if (stop.stop_requested() || inspected_files >= 64) break;
+                    if (sibling.folder || sibling.path == base_path) continue;
+                    auto extension = std::filesystem::u8path(sibling.path).extension().string();
+                    std::transform(extension.begin(), extension.end(), extension.begin(),
+                                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    if (extension != ".nsp") continue;
+                    ++inspected_files;
+
+                    auto inspection = InspectPackage(vfs, sibling.path, false, stop);
+                    for (auto& candidate : inspection.contents) {
+                        if (stop.stop_requested()) break;
+                        if (candidate.error != Error::None ||
+                            candidate.revision.kind != Kind::Update ||
+                            candidate.revision.application != result.application) continue;
+                        if (PlanImport(catalog.revisions, candidate.revision) != ImportAction::Add) continue;
+
+                        const auto import_error = ExecuteImport(store, catalog, vfs, candidate,
+                            true, true, stop, {}, result.version);
+                        if (import_error == Error::None) {
+                            result.managed = true;
+                            LOG_INFO(Frontend,
+                                "Content: auto-imported sibling update for application={:016X} from same-folder NSP",
+                                result.application);
+                        } else {
+                            LOG_WARNING(Frontend,
+                                "Content: skipped sibling update for application={:016X}, error={}",
+                                result.application, static_cast<int>(import_error));
+                        }
+                    }
+                }
+            } catch (const std::exception& e) {
+                LOG_WARNING(Frontend, "Content: sibling update scan skipped: {}", e.what());
+            } catch (...) {
+                LOG_WARNING(Frontend, "Content: sibling update scan skipped due to storage error");
+            }
+        }
+    }
     provider.ClearAllEntries();
     if (!result.managed) provider.AddEntriesFromContainer(file);
     else {

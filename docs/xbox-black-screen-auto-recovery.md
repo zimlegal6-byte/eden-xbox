@@ -58,3 +58,10 @@ Open the in-game menu by holding **View + Menu** for about one second. The quick
 - The report distinguishes measured facts from suspected causes.
 - A graphics pass is not mislabeled as full gameplay compatibility.
 - No automatic recovery claims success without observing new presented frames; interactive pass requires a separate progress/input check.
+
+
+## In-game graphics menu work (October 2026)
+
+The `feat/in-game-graphics-performance-menu` branch adds an internal-resolution selector to the Display page. It uses the renderer's actual `Settings::ResolutionSetup` choices (1/4x, 1/2x, 3/4x, 1x, 5/4x, 3/2x, 2x through 8x), applies the selected setting on the GPU thread, and stores the override in UWP LocalSettings under a key scoped to the Switch Program ID. It does not modify game saves.
+
+The menu shortcut remains **View + Menu held together for about one second**. A lower internal resolution can improve GPU-bound performance at the cost of image sharpness; it cannot guarantee higher FPS for CPU-bound games. This branch has not yet been validated on physical Xbox hardware. Build success is not proof that a particular game is fixed or faster.

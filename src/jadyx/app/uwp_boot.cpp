@@ -1109,6 +1109,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                   config.material_capture_menu, config.hunt_menu,
                                                   !game_frame.pixels.empty(),
                                                   LoadGameRecoveryProfile(program_id),
+                                                  L"",
                                                   LoadGameResolutionSetup(program_id, Settings::values.resolution_setup.GetValue())},
                                  program_id != 0);
                     if (game_title.empty()) {

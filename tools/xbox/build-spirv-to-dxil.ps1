@@ -32,10 +32,43 @@ if (-not (Test-Path (Join-Path $src "meson.build"))) {
         Invoke-WebRequest "https://archive.mesa3d.org/mesa-$MesaVersion.tar.xz" -OutFile $tarball
     }
     Write-Host "extracting $tarball ..."
-    # tar reports errors for the few symlinks in the tarball (CI files, not needed here): the check
-    # below is what decides whether extraction worked.
-    & tar.exe -xf $tarball -C $WorkDir 2>$null
-    if (-not (Test-Path (Join-Path $src "meson.build"))) { throw "extracting Mesa failed" }
+    # Windows tar.exe was still extracting this archive when the 3-hour job timeout hit.
+    # Use 7-Zip for the XZ and TAR layers, and emit progress so a stalled extraction is visible.
+    $sevenZipPath = (Get-Command 7z.exe -ErrorAction SilentlyContinue).Source
+    if (-not $sevenZipPath) {
+        $candidate = "C:\Program Files\7-Zip\7z.exe"
+        if (Test-Path $candidate) { $sevenZipPath = $candidate }
+    }
+    if (-not $sevenZipPath -or -not (Test-Path $sevenZipPath)) {
+        throw "7-Zip was not found; install the 7zip package before extracting Mesa."
+    }
+
+    $tarArchive = Join-Path $WorkDir "mesa-$MesaVersion.tar"
+    Write-Host "decompressing Mesa XZ archive with 7-Zip ..."
+    & $sevenZipPath x $tarball "-o$WorkDir" -y -bsp1
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tarArchive)) {
+        throw "decompressing Mesa XZ archive failed (exit code $LASTEXITCODE)"
+    }
+
+    Write-Host "extracting Mesa TAR archive with 7-Zip ..."
+    & $sevenZipPath x $tarArchive "-o$WorkDir" -y -bsp1
+    $tarExitCode = $LASTEXITCODE
+    Remove-Item $tarArchive -Force
+
+    # 7-Zip returns exit code 2 when it skips POSIX symlinks that it cannot
+    # safely create on Windows. Mesa's build must still have its core files.
+    # Do not ignore a genuinely incomplete extraction.
+    $requiredMesaFiles = @(
+        (Join-Path $src "meson.build"),
+        (Join-Path $src "src\microsoft\spirv_to_dxil\meson.build")
+    )
+    $missingMesaFiles = @($requiredMesaFiles | Where-Object { -not (Test-Path $_) })
+    if ($missingMesaFiles.Count -gt 0) {
+        throw "Mesa extraction incomplete; missing required files: $($missingMesaFiles -join ', ') (7-Zip exit code $tarExitCode)"
+    }
+    if ($tarExitCode -ne 0) {
+        Write-Warning "7-Zip reported skipped POSIX symlinks (exit code $tarExitCode); required Mesa build files are present, continuing."
+    }
 }
 
 # --- Local patches (idempotent) ---------------------------------------------------------------

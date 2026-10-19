@@ -756,6 +756,15 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     }
 
     const u64 program_id = system.GetApplicationProcessProgramID();
+    // A per-game choice overrides the global preference. An explicit boot.cfg upscaling
+    // setting remains the diagnostic override and takes precedence over saved per-game choices.
+    const Upscaling game_upscaling = config.upscaling
+                                           ? *config.upscaling
+                                           : LoadGameUpscaling(program_id, LoadSystemSettings().upscaling);
+    if (!config.upscaling && program_id != 0) {
+        system.GPU().RunOnGpuThread([game_upscaling] { ApplyUpscaling(game_upscaling); });
+        WriteDiag("step: per-game upscaling loaded for title " + std::to_string(program_id));
+    }
     PrewarmBudget prewarm_budget{LoadPrewarmStep(program_id)};
     if (config.jit_prewarm != BootConfig::JitPrewarm::Off && !resumed) {
         // All guest cores are still stopped. Each owns a separate JIT; never
@@ -1021,8 +1030,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                   options.deadzone, g_can_fullscreen.load(),
                                                   g_fullscreen.load(), LoadSystemSettings().show_performance_stats,
                                                   pulse_identity.has_value(),
-                                                  FromSettings(Settings::values.scaling_filter.GetValue(),
-                                                               Settings::values.fsr_sharpening_slider.GetValue()),
+                                                  game_upscaling,
                                                   config.material_capture_menu, config.hunt_menu,
                                                   !game_frame.pixels.empty()},
                                  program_id != 0);
@@ -1218,9 +1226,15 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 }
                 if (result == GameMenuResult::UpscalingChanged) {
                     const Upscaling upscaling = menu->Settings().upscaling;
-                    auto settings = LoadSystemSettings();
-                    settings.upscaling = upscaling;
-                    if (!SaveSystemSettings(settings)) WriteDiag("menu: upscaling preference could not be saved");
+                    if (program_id != 0) {
+                        if (!SaveGameUpscaling(program_id, upscaling))
+                            WriteDiag("menu: per-game upscaling preference could not be saved");
+                    } else {
+                        auto settings = LoadSystemSettings();
+                        settings.upscaling = upscaling;
+                        if (!SaveSystemSettings(settings))
+                            WriteDiag("menu: global upscaling preference could not be saved");
+                    }
                     // Written where the present reads it; draw_menu below presents the paused
                     // frame again with it.
                     system.GPU().RunOnGpuThread([upscaling] { ApplyUpscaling(upscaling); });

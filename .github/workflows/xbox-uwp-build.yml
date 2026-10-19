@@ -1,0 +1,76 @@
+name: Xbox UWP build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - ci/github-actions-xbox-build
+  push:
+    branches:
+      - ci/github-actions-xbox-build
+      - fix/per-game-upscaling-and-diagnostics
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install native build dependencies
+        shell: pwsh
+        run: |
+          choco install strawberryperl nasm vulkan-sdk 7zip -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "Chocolatey dependency installation failed." }
+
+          $perl = "C:\Strawberry\perl\bin"
+          $nasm = "C:\Program Files\NASM"
+          if (Test-Path $perl) { $env:PATH = "$perl;$env:PATH" }
+          if (Test-Path $nasm) { $env:PATH = "$nasm;$env:PATH" }
+
+          $sdk = Get-ChildItem "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $sdk) { throw "Vulkan SDK was not found after installation." }
+          $env:PATH = "$($sdk.FullName)\Bin;$env:PATH"
+          $validator = Join-Path $sdk.FullName "Bin\glslangValidator.exe"
+          if (-not (Test-Path $validator)) { throw "glslangValidator.exe not found at $validator" }
+
+          "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build Mesa SPIR-V to DXIL translator
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Strawberry\perl\bin;C:\Program Files\NASM;$env:PATH"
+          ./tools/xbox/build-spirv-to-dxil.ps1
+
+      - name: Configure UWP build
+        shell: pwsh
+        run: |
+          cmd /c "tools\xbox\build-env.bat cmake --preset uwp-x64"
+          if ($LASTEXITCODE -ne 0) { throw "UWP CMake configure failed." }
+
+      - name: Compile Jadyx UWP app
+        shell: pwsh
+        run: |
+          cmd /c "tools\xbox\build-env.bat cmake --build --preset uwp-x64 --target jadyx"
+          if ($LASTEXITCODE -ne 0) { throw "Jadyx UWP build failed." }
+
+      - name: Package signed Xbox app
+        shell: pwsh
+        run: |
+          ./tools/xbox/package-appx.ps1 -Library
+          if ($LASTEXITCODE -ne 0) { throw "APPX packaging failed." }
+
+      - name: Upload Xbox package and certificate
+        uses: actions/upload-artifact@v4
+        with:
+          name: jadyx-xbox-uwp-test
+          path: |
+            build-uwp/package/jadyx.appx
+            build-uwp/package/*.cer
+          if-no-files-found: error
+          retention-days: 7

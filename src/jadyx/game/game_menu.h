@@ -290,7 +290,7 @@ private:
             static constexpr const wchar_t* names[] = {
                 L"0,25x", L"0,5x", L"0,75x", L"1x (nativo)", L"1,25x", L"1,5x",
                 L"2x", L"3x", L"4x", L"5x", L"6x", L"7x", L"8x"};
-            const auto index = std::min<std::size_t>(static_cast<std::size_t>(settings.resolution_setup), std::size(names) - 1);
+            const auto index = std::min<std::size_t>(static_cast<std::size_t>(settings.resolution_setup), 13 - 1);
             return {L"Resolução interna", names[index], Choice,
                     L"Valores baixos podem ajudar o FPS; imagem pode perder nitidez", UiIcon::Display};
         }

@@ -108,6 +108,7 @@ struct GameMenuSettings {
     bool screenshot{};
     /// Per-title recovery profile selected by the player (persisted separately from saves).
     std::uint32_t recovery_profile{};
+    std::wstring recovery_note{};
 };
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
@@ -116,6 +117,7 @@ enum class GameMenuResult : std::uint8_t {
     None, Resume, Library, SettingsChanged, FullScreen, Cheats, PerformanceStatsChanged, UpscalingChanged,
     LibraryWithoutSession,
     RecoveryProfileChanged,
+    RecoveryDiagnosticRequested,
     CaptureGraphics,
     CapturePerformance,
     Screenshot,
@@ -139,7 +141,7 @@ class GameMenu {
 public:
     enum Item : std::size_t {
         Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, PerformanceStats, Library,
-        CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryProfile,
+        CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryDiagnose, RecoveryProfile,
     };
     enum class Page : std::uint8_t { Quick, Controller, Display, Recovery };
 
@@ -154,7 +156,7 @@ public:
         quick.push_back(Library);
         controller = {Style, FaceButtons, Deadzone};
         display = {ImageUpscaling, PerformanceStats};
-        recovery = {RecoveryProfile};
+        recovery = {RecoveryDiagnose, RecoveryProfile};
         if (settings.can_fullscreen) display.push_back(FullScreen);
     }
 
@@ -174,6 +176,8 @@ public:
 
     /// What the last screenshot did, under its row (empty: where they go).
     void SetScreenshotNote(std::wstring note) { screenshot_note = std::move(note); }
+    /// Status displayed on the recovery page after a manual diagnostic request.
+    void SetRecoveryNote(std::wstring note) { settings.recovery_note = std::move(note); }
 
     GameMenuResult Apply(MenuAction action) {
         const auto& items = Items();
@@ -283,6 +287,11 @@ private:
             return {Tr(Text::PerformanceStats), Tr(settings.show_performance_stats ? Text::Yes : Text::No), Choice};
         case FullScreen:
             return {Tr(Text::MenuFullScreen), Tr(settings.fullscreen ? Text::Yes : Text::No), Choice};
+        case RecoveryDiagnose:
+            return {L"Executar diagnóstico", L"", GameMenuRow::Kind::Action,
+                    settings.recovery_note.empty() ? L"Medir progresso e apresentações deste jogo"
+                                                   : settings.recovery_note,
+                    UiIcon::Display};
         case RecoveryProfile: {
             static constexpr const wchar_t* names[] = {L"Padrão", L"Aguardar mais", L"Apresentação síncrona", L"Intervalo 1"};
             const auto id = std::min<std::uint32_t>(settings.recovery_profile, 3);
@@ -356,6 +365,8 @@ private:
         case FullScreen:
             settings.fullscreen = !settings.fullscreen;
             return GameMenuResult::FullScreen;
+        case RecoveryDiagnose:
+            return confirm ? GameMenuResult::RecoveryDiagnosticRequested : GameMenuResult::None;
         case RecoveryProfile:
             settings.recovery_profile = (settings.recovery_profile + (back ? 3 : 1)) % 4;
             return GameMenuResult::RecoveryProfileChanged;

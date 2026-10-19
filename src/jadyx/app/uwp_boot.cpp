@@ -83,6 +83,7 @@
 #include "video_core/renderer_d3d12/d3d12_menu_image.h"
 
 #include "jadyx/app/alloc_watch.h"
+#include "jadyx/app/black_screen_recovery.h"
 #include "jadyx/cheats/cheat_session.h"
 #include "jadyx/cheats/cheats_page.h"
 #include "jadyx/cheats/cheats_view.h"
@@ -113,6 +114,7 @@
 
 namespace D3D12 {
 // renderer_d3d12.h; its includes need Mesa's headers, which only video_core sees.
+std::uint64_t SuccessfulPresentCalls() noexcept;
 void SetTracedFrame(u32 frame, u32 count);
 void TraceNextFrames(u32 count);
 void TraceNextMaterialFrame(u64 pixel_shader = 0);
@@ -934,9 +936,47 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         // Pulse: after a resume the presented frames are logged each second for 30 s, so a guest
         // that freezes shows when it stopped.
         u64 resume_frames = 0;
+
+        // Black-screen telemetry is per running title. This first integration observes the real
+        // DXGI Present success counter separately from guest progress; it does not yet change
+        // renderer settings or claim that a submitted frame contains visible pixels.
+        Jadyx::Recovery::Sample recovery_before{
+            .time = std::chrono::steady_clock::now(),
+            .presented_frames = D3D12::SuccessfulPresentCalls(),
+            .guest_frames = system.GetPerfStats().TotalGameFrames(),
+        };
+        auto recovery_window_start = recovery_before.time;
+
         for (u32 tick = 1;; ++tick) {
             std::this_thread::sleep_for(TICK);
             play_session.Tick(!menu);
+
+            const auto recovery_now = std::chrono::steady_clock::now();
+            if (recovery_now - recovery_window_start >= Jadyx::Recovery::ObservationWindow) {
+                Jadyx::Recovery::Sample recovery_after{
+                    .time = recovery_now,
+                    .presented_frames = D3D12::SuccessfulPresentCalls(),
+                    .guest_frames = system.GetPerfStats().TotalGameFrames(),
+                };
+                const auto recovery_result =
+                    Jadyx::Recovery::Controller::Evaluate(recovery_before, recovery_after);
+                std::string report = "black-screen observation title=" + std::to_string(program_id) +
+                    " result=" + std::string(Jadyx::Recovery::Controller::Name(recovery_result.result)) +
+                    " present_calls_delta=" + std::to_string(recovery_result.presented_delta) +
+                    " guest_frames_delta=" + std::to_string(recovery_result.guest_delta) +
+                    " window_seconds=" + std::to_string(recovery_result.observation_seconds);
+                if (recovery_result.presented_fps) {
+                    report += " successful_present_calls_per_second=" +
+                              std::to_string(*recovery_result.presented_fps);
+                }
+                if (recovery_result.guest_fps) {
+                    report += " guest_frames_per_second=" + std::to_string(*recovery_result.guest_fps);
+                }
+                WriteDiag(report);
+                recovery_before = recovery_after;
+                recovery_window_start = recovery_now;
+            }
+
             if (u64 used{}, limit{}; config.memory_audit && tick % 10 == 0 &&
                                      QueryAppMemory(used, limit)) {
                 const u64 headroom = limit > used ? limit - used : 0;

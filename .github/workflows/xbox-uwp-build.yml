@@ -11,6 +11,7 @@ on:
       - ci/github-actions-xbox-build
       - fix/per-game-upscaling-and-diagnostics
       - feat/black-screen-auto-recovery
+      - feat/in-game-graphics-performance-menu
 
 permissions:
   contents: read

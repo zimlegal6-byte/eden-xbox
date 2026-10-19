@@ -109,6 +109,8 @@ struct GameMenuSettings {
     /// Per-title recovery profile selected by the player (persisted separately from saves).
     std::uint32_t recovery_profile{};
     std::wstring recovery_note{};
+    /// The real renderer resolution factor; lower values can improve performance at reduced clarity.
+    Settings::ResolutionSetup resolution_setup{Settings::ResolutionSetup::Res1X};
 };
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
@@ -118,6 +120,7 @@ enum class GameMenuResult : std::uint8_t {
     LibraryWithoutSession,
     RecoveryProfileChanged,
     RecoveryDiagnosticRequested,
+    ResolutionChanged,
     CaptureGraphics,
     CapturePerformance,
     Screenshot,
@@ -140,7 +143,7 @@ struct GameMenuRow {
 class GameMenu {
 public:
     enum Item : std::size_t {
-        Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, PerformanceStats, Library,
+        Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, ResolutionScale, PerformanceStats, Library,
         CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryDiagnose, RecoveryProfile,
     };
     enum class Page : std::uint8_t { Quick, Controller, Display, Recovery };
@@ -155,7 +158,7 @@ public:
         if (settings.performance_capture) quick.push_back(CapturePerformance);
         quick.push_back(Library);
         controller = {Style, FaceButtons, Deadzone};
-        display = {ImageUpscaling, PerformanceStats};
+        display = {ImageUpscaling, ResolutionScale, PerformanceStats};
         recovery = {RecoveryDiagnose, RecoveryProfile};
         if (settings.can_fullscreen) display.push_back(FullScreen);
     }
@@ -283,6 +286,14 @@ private:
             return {Tr(Text::DeadZone), DeadzoneText(), Choice};
         case ImageUpscaling:
             return {Tr(Text::Upscaling), Tr(UpscalingText(settings.upscaling)), Choice};
+        case ResolutionScale: {
+            static constexpr const wchar_t* names[] = {
+                L"0,25x", L"0,5x", L"0,75x", L"1x (nativo)", L"1,25x", L"1,5x",
+                L"2x", L"3x", L"4x", L"5x", L"6x", L"7x", L"8x"};
+            const auto index = std::min<std::size_t>(static_cast<std::size_t>(settings.resolution_setup), 13 - 1);
+            return {L"Resolução interna", names[index], Choice,
+                    L"Valores baixos podem ajudar o FPS; imagem pode perder nitidez", UiIcon::Display};
+        }
         case PerformanceStats:
             return {Tr(Text::PerformanceStats), Tr(settings.show_performance_stats ? Text::Yes : Text::No), Choice};
         case FullScreen:
@@ -360,6 +371,13 @@ private:
         case ImageUpscaling:
             settings.upscaling = StepUpscaling(settings.upscaling, back);
             return GameMenuResult::UpscalingChanged;
+        case ResolutionScale: {
+            constexpr std::size_t Count = 13;
+            auto index = std::min<std::size_t>(static_cast<std::size_t>(settings.resolution_setup), Count - 1);
+            index = back ? (index + Count - 1) % Count : (index + 1) % Count;
+            settings.resolution_setup = static_cast<Settings::ResolutionSetup>(index);
+            return GameMenuResult::ResolutionChanged;
+        }
         case PerformanceStats:
             settings.show_performance_stats = !settings.show_performance_stats;
             return GameMenuResult::PerformanceStatsChanged;

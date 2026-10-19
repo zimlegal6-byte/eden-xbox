@@ -758,6 +758,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     }
 
     const u64 program_id = system.GetApplicationProcessProgramID();
+    // Apply the saved Player Select applet mode for this title before guest code can open it.
+    // HLE is the compatibility fallback for games that stall during the LLE applet path.
+    const Settings::AppletMode player_select_applet_mode =
+        LoadGamePlayerSelectAppletMode(program_id, Settings::AppletMode::LLE);
+    Settings::values.player_select_applet_mode.SetValue(player_select_applet_mode);
+    WriteDiag("player-select applet mode loaded title=" + std::to_string(program_id) +
+              " mode=" + std::string(Settings::CanonicalizeEnum(player_select_applet_mode)));
     // Recovery profiles are independent from upscaling and saves. Profile 1 extends observation
     // to avoid judging slow first frames too early; profile 3 applies the runtime swap-interval
     // diagnostic. Synchronous presentation is intentionally not selectable until it can be
@@ -1110,7 +1117,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                   !game_frame.pixels.empty(),
                                                   LoadGameRecoveryProfile(program_id),
                                                   L"",
-                                                  LoadGameResolutionSetup(program_id, Settings::values.resolution_setup.GetValue())},
+                                                  LoadGameResolutionSetup(program_id, Settings::values.resolution_setup.GetValue()),
+                                                  player_select_applet_mode},
                                  program_id != 0);
                     if (game_title.empty()) {
                         std::string title;
@@ -1309,6 +1317,18 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                         WriteDiag("menu: saved and applied per-game recovery profile " +
                                   std::to_string(recovery_profile) +
                                   " for title " + std::to_string(program_id));
+                    }
+                }
+                if (result == GameMenuResult::PlayerSelectAppletModeChanged) {
+                    const auto mode = menu->Settings().player_select_applet_mode;
+                    if (program_id == 0 || !SaveGamePlayerSelectAppletMode(program_id, mode)) {
+                        WriteDiag("menu: Player Select applet mode could not be saved");
+                    } else {
+                        Settings::values.player_select_applet_mode.SetValue(mode);
+                        WriteDiag("menu: saved Player Select applet mode " +
+                                  std::string(Settings::CanonicalizeEnum(mode)) +
+                                  " for title " + std::to_string(program_id) +
+                                  "; restart game if the applet has already opened");
                     }
                 }
                 if (result == GameMenuResult::RecoveryDiagnosticRequested) {

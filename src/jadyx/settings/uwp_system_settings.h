@@ -33,6 +33,11 @@ bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling);
 Settings::ResolutionSetup LoadGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup fallback);
 bool SaveGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup setup);
 
+// Per-title Player Select applet mode. HLE is a useful compatibility fallback for games that
+// stall or render black while the Player Select applet is opening; missing entries use LLE.
+Settings::AppletMode LoadGamePlayerSelectAppletMode(std::uint64_t program_id, Settings::AppletMode fallback);
+bool SaveGamePlayerSelectAppletMode(std::uint64_t program_id, Settings::AppletMode mode);
+
 // Per-title black-screen recovery profile, stored independently from upscaling and game saves.
 // Values are the stable numeric Profile IDs defined by the recovery controller (0..3).
 // Invalid/missing values return fallback; no game content or save data is touched.

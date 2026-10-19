@@ -758,6 +758,17 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     }
 
     const u64 program_id = system.GetApplicationProcessProgramID();
+    // Recovery profiles are independent from upscaling and saves. Profile 1 extends observation
+    // to avoid judging slow first frames too early; profile 3 applies the runtime swap-interval
+    // diagnostic. Synchronous presentation is intentionally not selectable until it can be
+    // switched without rebuilding the renderer.
+    std::uint32_t recovery_profile = LoadGameRecoveryProfile(program_id);
+    auto recovery_observation_window = recovery_profile == 1
+                                           ? Jadyx::Recovery::LongerFirstFrameWindow
+                                           : Jadyx::Recovery::ObservationWindow;
+    VideoCore::Perf::SetForceSwapIntervalOne(recovery_profile == 3);
+    WriteDiag("black-screen recovery profile loaded title=" + std::to_string(program_id) +
+              " profile=" + std::to_string(recovery_profile));
     // A per-game choice overrides the global preference. An explicit boot.cfg upscaling
     // setting remains the diagnostic override and takes precedence over saved per-game choices.
     const Upscaling game_upscaling = config.upscaling
@@ -966,7 +977,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 WriteDiag("black-screen manual diagnostic observation started title=" +
                           std::to_string(program_id));
             }
-            if (!menu && recovery_now - recovery_window_start >= Jadyx::Recovery::ObservationWindow) {
+            if (!menu && recovery_now - recovery_window_start >= recovery_observation_window) {
                 Jadyx::Recovery::Sample recovery_after{
                     .time = recovery_now,
                     .presented_frames = D3D12::SuccessfulPresentCalls(),
@@ -1278,8 +1289,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                         !SaveGameRecoveryProfile(program_id, menu->Settings().recovery_profile)) {
                         WriteDiag("menu: recovery profile could not be saved (no title ID or storage error)");
                     } else {
-                        WriteDiag("menu: saved per-game recovery profile " +
-                                  std::to_string(menu->Settings().recovery_profile) +
+                        recovery_profile = menu->Settings().recovery_profile;
+                        recovery_observation_window = recovery_profile == 1
+                            ? Jadyx::Recovery::LongerFirstFrameWindow
+                            : Jadyx::Recovery::ObservationWindow;
+                        VideoCore::Perf::SetForceSwapIntervalOne(recovery_profile == 3);
+                        WriteDiag("menu: saved and applied per-game recovery profile " +
+                                  std::to_string(recovery_profile) +
                                   " for title " + std::to_string(program_id));
                     }
                 }

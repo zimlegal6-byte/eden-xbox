@@ -101,7 +101,13 @@ void Swapchain::Present() {
     const VideoCore::FrameTrace::ScopedSpan trace_present{
         VideoCore::FrameTrace::Event::HostPresentLong, 0};
     ThrowIfFailed(swapchain->Present(1, 0), "IDXGISwapChain::Present");
-    successful_present_calls.fetch_add(1, std::memory_order_relaxed);
+    const std::uint64_t count =
+        successful_present_calls.fetch_add(1, std::memory_order_relaxed) + 1;
+    // Sparse heartbeat for the Xbox black-screen diagnostics log. This confirms DXGI accepts
+    // presentation calls, but intentionally does not claim the submitted image contains pixels.
+    if (count % 300 == 0) {
+        LOG_INFO(Render, "D3D12 presentation heartbeat: {} successful Present calls", count);
+    }
 }
 
 } // namespace D3D12

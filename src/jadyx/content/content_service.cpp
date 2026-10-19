@@ -159,7 +159,7 @@ LaunchResolution ResolveLaunchContent(FileSys::VfsFilesystem& vfs, const std::st
     if (programs.empty()) return result;
     result.application = GetBaseTitleID(programs.front().title_id);
     result.version = BaseVersion(base, result.application);
-    const auto store = DefaultStore(); Catalog catalog;
+    auto store = DefaultStore(); Catalog catalog;
     result.error = store.Load(catalog);
     if (result.error != Error::None) return result;
     result.managed = std::find(catalog.managed_applications.begin(), catalog.managed_applications.end(), result.application) != catalog.managed_applications.end() || std::any_of(catalog.revisions.begin(), catalog.revisions.end(),

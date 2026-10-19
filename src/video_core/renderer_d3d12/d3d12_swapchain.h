@@ -4,12 +4,17 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 #include <dxgi1_4.h>
 
 #include "video_core/renderer_d3d12/d3d12_device.h"
 
 namespace D3D12 {
+
+/// Number of successful IDXGISwapChain::Present calls in this process. This measures successful
+/// presentation submissions, not proof that a non-black image was visibly displayed.
+std::uint64_t SuccessfulPresentCalls() noexcept;
 
 /// Flip-model swapchain on a UWP CoreWindow (the only presentation surface a UWP app on Xbox has).
 ///

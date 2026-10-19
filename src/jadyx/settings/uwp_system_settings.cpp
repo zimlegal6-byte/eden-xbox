@@ -30,6 +30,9 @@ std::wstring GameUpscalingKey(std::uint64_t program_id) {
 std::wstring GameRecoveryProfileKey(std::uint64_t program_id) {
     return L"game_recovery_profile_" + std::to_wstring(program_id);
 }
+std::wstring GameResolutionSetupKey(std::uint64_t program_id) {
+    return L"game_resolution_setup_" + std::to_wstring(program_id);
+}
 
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
@@ -149,6 +152,31 @@ bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling) {
     } catch (...) {
         return false;
     }
+}
+
+Settings::ResolutionSetup LoadGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup fallback) {
+    if (program_id == 0) return fallback;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        const winrt::hstring key{GameResolutionSetupKey(program_id)};
+        if (!values.HasKey(key)) return fallback;
+        const auto raw = winrt::unbox_value<int32_t>(values.Lookup(key));
+        if (raw < static_cast<int32_t>(Settings::ResolutionSetup::Res1_4X) ||
+            raw > static_cast<int32_t>(Settings::ResolutionSetup::Res8X)) return fallback;
+        return static_cast<Settings::ResolutionSetup>(raw);
+    } catch (...) { return fallback; }
+}
+
+bool SaveGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup setup) {
+    if (program_id == 0 ||
+        static_cast<int32_t>(setup) < static_cast<int32_t>(Settings::ResolutionSetup::Res1_4X) ||
+        static_cast<int32_t>(setup) > static_cast<int32_t>(Settings::ResolutionSetup::Res8X)) return false;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        values.Insert(winrt::hstring{GameResolutionSetupKey(program_id)},
+                      winrt::box_value(static_cast<int32_t>(setup)));
+        return true;
+    } catch (...) { return false; }
 }
 
 std::uint32_t LoadGameRecoveryProfile(std::uint64_t program_id, std::uint32_t fallback) {

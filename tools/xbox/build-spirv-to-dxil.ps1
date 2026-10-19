@@ -52,9 +52,23 @@ if (-not (Test-Path (Join-Path $src "meson.build"))) {
 
     Write-Host "extracting Mesa TAR archive with 7-Zip ..."
     & $sevenZipPath x $tarArchive "-o$WorkDir" -y -bsp1
-    if ($LASTEXITCODE -ne 0) { throw "extracting Mesa TAR archive failed (exit code $LASTEXITCODE)" }
+    $tarExitCode = $LASTEXITCODE
     Remove-Item $tarArchive -Force
-    if (-not (Test-Path (Join-Path $src "meson.build"))) { throw "extracting Mesa failed" }
+
+    # 7-Zip returns exit code 2 when it skips POSIX symlinks that it cannot
+    # safely create on Windows. Mesa's build must still have its core files.
+    # Do not ignore a genuinely incomplete extraction.
+    $requiredMesaFiles = @(
+        (Join-Path $src "meson.build"),
+        (Join-Path $src "src\microsoft\spirv_to_dxil\meson.build")
+    )
+    $missingMesaFiles = @($requiredMesaFiles | Where-Object { -not (Test-Path $_) })
+    if ($missingMesaFiles.Count -gt 0) {
+        throw "Mesa extraction incomplete; missing required files: $($missingMesaFiles -join ', ') (7-Zip exit code $tarExitCode)"
+    }
+    if ($tarExitCode -ne 0) {
+        Write-Warning "7-Zip reported skipped POSIX symlinks (exit code $tarExitCode); required Mesa build files are present, continuing."
+    }
 }
 
 # --- Local patches (idempotent) ---------------------------------------------------------------

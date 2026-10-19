@@ -106,6 +106,8 @@ struct GameMenuSettings {
     bool performance_capture{};
     /// The paused frame was read back: the menu can save it as a screenshot.
     bool screenshot{};
+    /// Per-title recovery profile selected by the player (persisted separately from saves).
+    std::uint32_t recovery_profile{};
 };
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
@@ -113,6 +115,7 @@ struct GameMenuSettings {
 enum class GameMenuResult : std::uint8_t {
     None, Resume, Library, SettingsChanged, FullScreen, Cheats, PerformanceStatsChanged, UpscalingChanged,
     LibraryWithoutSession,
+    RecoveryProfileChanged,
     CaptureGraphics,
     CapturePerformance,
     Screenshot,
@@ -136,21 +139,22 @@ class GameMenu {
 public:
     enum Item : std::size_t {
         Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, PerformanceStats, Library,
-        CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage,
+        CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryProfile,
     };
-    enum class Page : std::uint8_t { Quick, Controller, Display };
+    enum class Page : std::uint8_t { Quick, Controller, Display, Recovery };
 
     /// `cheats`: the game can have cheats (it has a title id), so the menu offers them.
     explicit GameMenu(GameMenuSettings settings_, bool cheats = false) : settings{settings_} {
         quick = {Continue};
         if (settings.screenshot) quick.push_back(Screenshot);
         if (cheats) quick.push_back(Cheats);
-        quick.insert(quick.end(), {ControllerPage, DisplayPage});
+        quick.insert(quick.end(), {ControllerPage, DisplayPage, RecoveryPage});
         if (settings.material_capture) quick.push_back(CaptureGraphics);
         if (settings.performance_capture) quick.push_back(CapturePerformance);
         quick.push_back(Library);
         controller = {Style, FaceButtons, Deadzone};
         display = {ImageUpscaling, PerformanceStats};
+        recovery = {RecoveryProfile};
         if (settings.can_fullscreen) display.push_back(FullScreen);
     }
 
@@ -180,7 +184,7 @@ public:
             if (page == Page::Quick) return GameMenuResult::Resume;
             // Back on the page's own row.
             selected = static_cast<std::size_t>(
-                std::find(quick.begin(), quick.end(), page == Page::Controller ? ControllerPage : DisplayPage) -
+                std::find(quick.begin(), quick.end(), page == Page::Controller ? ControllerPage : page == Page::Display ? DisplayPage : RecoveryPage) -
                 quick.begin());
             page = Page::Quick;
             return GameMenuResult::None;
@@ -215,7 +219,7 @@ public:
     [[nodiscard]] std::wstring PageTitle() const {
         using I18n::Text;
         return Tr(page == Page::Controller ? Text::MenuController : page == Page::Display ? Text::MenuDisplay
-                                                                                          : Text::MenuQuick);
+                         : page == Page::Recovery ? Text::MenuQuick : Text::MenuQuick);
     }
     /// Row of the cursor, as drawn.
     [[nodiscard]] std::size_t Selected() const { return selected; }
@@ -226,7 +230,7 @@ private:
     static std::wstring Tr(I18n::Text id) { return std::wstring{I18n::Tr(id)}; }
 
     [[nodiscard]] const std::vector<Item>& Items() const {
-        return page == Page::Controller ? controller : page == Page::Display ? display : quick;
+        return page == Page::Controller ? controller : page == Page::Display ? display : page == Page::Recovery ? recovery : quick;
     }
 
     GameMenuRow Row(Item item) const {
@@ -257,6 +261,9 @@ private:
                     Tr(ControllerStyleText(settings.style)) + L" · " +
                         Tr(settings.swap_face_buttons ? Text::ByPosition : Text::ByLetter) + L" · " + DeadzoneText(),
                     UiIcon::Controller};
+        case RecoveryPage:
+            return {L"Recuperação do jogo", L"", GameMenuRow::Kind::Page,
+                    L"Perfil por jogo · diagnóstico de tela preta", UiIcon::Display};
         case DisplayPage: {
             std::wstring detail = Tr(UpscalingText(settings.upscaling));
             if (settings.show_performance_stats) detail += L" · " + Tr(Text::MenuStatsShort);
@@ -275,6 +282,12 @@ private:
             return {Tr(Text::PerformanceStats), Tr(settings.show_performance_stats ? Text::Yes : Text::No), Choice};
         case FullScreen:
             return {Tr(Text::MenuFullScreen), Tr(settings.fullscreen ? Text::Yes : Text::No), Choice};
+        case RecoveryProfile: {
+            static constexpr const wchar_t* names[] = {L"Padrão", L"Aguardar mais", L"Apresentação síncrona", L"Intervalo 1"};
+            const auto id = std::min<std::uint32_t>(settings.recovery_profile, 3);
+            return {L"Perfil salvo", names[id], Choice,
+                    L"Selecionar perfil para este jogo", UiIcon::Display};
+        }
         case Library:
             if (!settings.pulse_sessions) return {Tr(Text::MenuBackToHome), {}, Action, {}, UiIcon::Exit};
             return {Tr(Text::MenuBackToHome), {}, Choice,
@@ -305,9 +318,11 @@ private:
             return GameMenuResult::None;
         case ControllerPage:
         case DisplayPage:
+        case RecoveryPage:
             // A and Right open the page, as a row with ">" does elsewhere.
             if (back) return GameMenuResult::None;
-            page = SelectedItem() == ControllerPage ? Page::Controller : Page::Display;
+            page = SelectedItem() == ControllerPage ? Page::Controller :
+                   SelectedItem() == DisplayPage ? Page::Display : Page::Recovery;
             selected = 0;
             return GameMenuResult::None;
         case Library:
@@ -340,12 +355,15 @@ private:
         case FullScreen:
             settings.fullscreen = !settings.fullscreen;
             return GameMenuResult::FullScreen;
+        case RecoveryProfile:
+            settings.recovery_profile = (settings.recovery_profile + (back ? 3 : 1)) % 4;
+            return GameMenuResult::RecoveryProfileChanged;
         }
         return GameMenuResult::None;
     }
 
     GameMenuSettings settings;
-    std::vector<Item> quick, controller, display;
+    std::vector<Item> quick, controller, display, recovery;
     Page page{Page::Quick};
     std::size_t selected{};
     std::size_t cheats_on{};

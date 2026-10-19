@@ -9,6 +9,7 @@ on:
     branches:
       - ci/github-actions-xbox-build
       - fix/per-game-upscaling-and-diagnostics
+      - feat/black-screen-auto-recovery
 
 permissions:
   contents: read
@@ -64,13 +65,21 @@ jobs:
         run: |
           ./tools/xbox/package-appx.ps1 -Library
           if ($LASTEXITCODE -ne 0) { throw "APPX packaging failed." }
+          $package = "build-uwp\package"
+          foreach ($required in @("jadyx.appx", "jadyx.cer", "Microsoft.VCLibs.x64.14.00.appx")) {
+            if (-not (Test-Path (Join-Path $package $required))) {
+              throw "Required Xbox install file missing: $required. Check Visual Studio's C++ UWP tools component."
+            }
+          }
+          Get-ChildItem $package | Select-Object Name, Length
 
-      - name: Upload Xbox package and certificate
+      - name: Upload Xbox package, certificate, and VCLibs dependency
         uses: actions/upload-artifact@v4
         with:
-          name: jadyx-xbox-uwp-test
+          name: jadyx-xbox-uwp-${{ github.run_number }}
           path: |
             build-uwp/package/jadyx.appx
-            build-uwp/package/*.cer
+            build-uwp/package/jadyx.cer
+            build-uwp/package/Microsoft.VCLibs.x64.14.00.appx
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14

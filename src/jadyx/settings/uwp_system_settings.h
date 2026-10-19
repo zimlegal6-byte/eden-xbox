@@ -29,6 +29,12 @@ void ApplyUpscaling(Upscaling upscaling);
 Upscaling LoadGameUpscaling(std::uint64_t program_id, Upscaling fallback);
 bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling);
 
+// Per-title black-screen recovery profile, stored independently from upscaling and game saves.
+// Values are the stable numeric Profile IDs defined by the recovery controller (0..3).
+// Invalid/missing values return fallback; no game content or save data is touched.
+std::uint32_t LoadGameRecoveryProfile(std::uint64_t program_id, std::uint32_t fallback = 0);
+bool SaveGameRecoveryProfile(std::uint64_t program_id, std::uint32_t profile);
+
 /// Renames the active profile to the saved user name (the default one when none is saved), before
 /// a game starts. Returns false when the profile could not be written.
 bool ApplyUserName(Service::Account::ProfileManager& profiles, std::wstring_view name);

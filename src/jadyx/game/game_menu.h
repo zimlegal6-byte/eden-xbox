@@ -111,6 +111,8 @@ struct GameMenuSettings {
     std::wstring recovery_note{};
     /// The real renderer resolution factor; lower values can improve performance at reduced clarity.
     Settings::ResolutionSetup resolution_setup{Settings::ResolutionSetup::Res1X};
+    /// Player Select applet mode; HLE can avoid LLE applet startup stalls in some titles.
+    Settings::AppletMode player_select_applet_mode{Settings::AppletMode::LLE};
 };
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
@@ -121,6 +123,7 @@ enum class GameMenuResult : std::uint8_t {
     RecoveryProfileChanged,
     RecoveryDiagnosticRequested,
     ResolutionChanged,
+    PlayerSelectAppletModeChanged,
     CaptureGraphics,
     CapturePerformance,
     Screenshot,
@@ -144,7 +147,7 @@ class GameMenu {
 public:
     enum Item : std::size_t {
         Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, ResolutionScale, PerformanceStats, Library,
-        CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryDiagnose, RecoveryProfile,
+        CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryDiagnose, RecoveryProfile, PlayerSelectAppletMode,
     };
     enum class Page : std::uint8_t { Quick, Controller, Display, Recovery };
 
@@ -159,7 +162,7 @@ public:
         quick.push_back(Library);
         controller = {Style, FaceButtons, Deadzone};
         display = {ImageUpscaling, ResolutionScale, PerformanceStats};
-        recovery = {RecoveryDiagnose, RecoveryProfile};
+        recovery = {RecoveryDiagnose, RecoveryProfile, PlayerSelectAppletMode};
         if (settings.can_fullscreen) display.push_back(FullScreen);
     }
 
@@ -303,6 +306,11 @@ private:
                     settings.recovery_note.empty() ? L"Medir progresso e apresentações deste jogo"
                                                    : settings.recovery_note,
                     UiIcon::Display};
+        case PlayerSelectAppletMode:
+            return {L"Applet de seleção de jogador", settings.player_select_applet_mode == Settings::AppletMode::HLE
+                        ? L"HLE (compatibilidade)" : L"LLE (original)",
+                    Choice, L"Altera a implementação do applet; se já travou, reinicie o jogo após mudar",
+                    UiIcon::Display};
         case RecoveryProfile: {
             static constexpr const wchar_t* names[] = {
                 L"Padrão", L"Aguardar mais", L"Síncrona (indisponível)", L"Intervalo 1"};
@@ -386,6 +394,11 @@ private:
             return GameMenuResult::FullScreen;
         case RecoveryDiagnose:
             return confirm ? GameMenuResult::RecoveryDiagnosticRequested : GameMenuResult::None;
+        case PlayerSelectAppletMode:
+            settings.player_select_applet_mode =
+                settings.player_select_applet_mode == Settings::AppletMode::HLE
+                    ? Settings::AppletMode::LLE : Settings::AppletMode::HLE;
+            return GameMenuResult::PlayerSelectAppletModeChanged;
         case RecoveryProfile:
             // Synchronous presentation requires a renderer lifecycle change and is deliberately
             // not offered as an active profile until that path can be switched safely.

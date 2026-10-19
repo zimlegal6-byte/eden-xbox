@@ -218,8 +218,9 @@ public:
     /// The page's title and icon, as its header shows them.
     [[nodiscard]] std::wstring PageTitle() const {
         using I18n::Text;
-        return Tr(page == Page::Controller ? Text::MenuController : page == Page::Display ? Text::MenuDisplay
-                         : page == Page::Recovery ? Text::MenuQuick : Text::MenuQuick);
+        if (page == Page::Recovery) return L"Recuperação do jogo";
+        return Tr(page == Page::Controller ? Text::MenuController
+                                           : page == Page::Display ? Text::MenuDisplay : Text::MenuQuick);
     }
     /// Row of the cursor, as drawn.
     [[nodiscard]] std::size_t Selected() const { return selected; }

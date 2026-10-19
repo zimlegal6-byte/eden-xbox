@@ -27,6 +27,9 @@ constexpr auto UpscalingKey = L"system_upscaling";
 std::wstring GameUpscalingKey(std::uint64_t program_id) {
     return L"game_upscaling_" + std::to_wstring(program_id);
 }
+std::wstring GameRecoveryProfileKey(std::uint64_t program_id) {
+    return L"game_recovery_profile_" + std::to_wstring(program_id);
+}
 
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
@@ -142,6 +145,31 @@ bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling) {
         const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
         values.Insert(winrt::hstring{GameUpscalingKey(program_id)},
                        winrt::box_value(static_cast<int32_t>(upscaling)));
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+std::uint32_t LoadGameRecoveryProfile(std::uint64_t program_id, std::uint32_t fallback) {
+    if (program_id == 0) return fallback;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        const winrt::hstring key{GameRecoveryProfileKey(program_id)};
+        if (!values.HasKey(key)) return fallback;
+        const auto raw = winrt::unbox_value<std::uint32_t>(values.Lookup(key));
+        return raw <= 3 ? raw : fallback;
+    } catch (...) {
+        return fallback;
+    }
+}
+
+bool SaveGameRecoveryProfile(std::uint64_t program_id, std::uint32_t profile) {
+    if (program_id == 0 || profile > 3) return false;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        values.Insert(winrt::hstring{GameRecoveryProfileKey(program_id)},
+                      winrt::box_value(profile));
         return true;
     } catch (...) {
         return false;

@@ -32,9 +32,28 @@ if (-not (Test-Path (Join-Path $src "meson.build"))) {
         Invoke-WebRequest "https://archive.mesa3d.org/mesa-$MesaVersion.tar.xz" -OutFile $tarball
     }
     Write-Host "extracting $tarball ..."
-    # tar reports errors for the few symlinks in the tarball (CI files, not needed here): the check
-    # below is what decides whether extraction worked.
-    & tar.exe -xf $tarball -C $WorkDir 2>$null
+    # Windows tar.exe was still extracting this archive when the 3-hour job timeout hit.
+    # Use 7-Zip for the XZ and TAR layers, and emit progress so a stalled extraction is visible.
+    $sevenZipPath = (Get-Command 7z.exe -ErrorAction SilentlyContinue).Source
+    if (-not $sevenZipPath) {
+        $candidate = "C:\Program Files\7-Zip\7z.exe"
+        if (Test-Path $candidate) { $sevenZipPath = $candidate }
+    }
+    if (-not $sevenZipPath -or -not (Test-Path $sevenZipPath)) {
+        throw "7-Zip was not found; install the 7zip package before extracting Mesa."
+    }
+
+    $tarArchive = Join-Path $WorkDir "mesa-$MesaVersion.tar"
+    Write-Host "decompressing Mesa XZ archive with 7-Zip ..."
+    & $sevenZipPath x $tarball "-o$WorkDir" -y -bsp1
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tarArchive)) {
+        throw "decompressing Mesa XZ archive failed (exit code $LASTEXITCODE)"
+    }
+
+    Write-Host "extracting Mesa TAR archive with 7-Zip ..."
+    & $sevenZipPath x $tarArchive "-o$WorkDir" -y -bsp1
+    if ($LASTEXITCODE -ne 0) { throw "extracting Mesa TAR archive failed (exit code $LASTEXITCODE)" }
+    Remove-Item $tarArchive -Force
     if (-not (Test-Path (Join-Path $src "meson.build"))) { throw "extracting Mesa failed" }
 }
 

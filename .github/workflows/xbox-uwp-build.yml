@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-2022
-    timeout-minutes: 180
+    timeout-minutes: 360
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
       - name: Install native build dependencies
         shell: pwsh
         run: |
-          choco install strawberryperl nasm vulkan-sdk -y --no-progress
+          choco install strawberryperl nasm vulkan-sdk 7zip -y --no-progress
           if ($LASTEXITCODE -ne 0) { throw "Chocolatey dependency installation failed." }
 
           $perl = "C:\Strawberry\perl\bin"

@@ -778,6 +778,16 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         system.GPU().RunOnGpuThread([game_upscaling] { ApplyUpscaling(game_upscaling); });
         WriteDiag("step: per-game upscaling loaded for title " + std::to_string(program_id));
     }
+    const Settings::ResolutionSetup game_resolution_setup =
+        LoadGameResolutionSetup(program_id, Settings::values.resolution_setup.GetValue());
+    if (program_id != 0) {
+        system.GPU().RunOnGpuThread([game_resolution_setup] {
+            Settings::values.resolution_setup.SetValue(game_resolution_setup);
+            Settings::TranslateResolutionInfo(game_resolution_setup, Settings::values.resolution_info);
+        });
+        WriteDiag("step: per-game internal resolution loaded for title " + std::to_string(program_id) +
+                  " setup=" + std::to_string(static_cast<int>(game_resolution_setup)));
+    }
     PrewarmBudget prewarm_budget{LoadPrewarmStep(program_id)};
     if (config.jit_prewarm != BootConfig::JitPrewarm::Off && !resumed) {
         // All guest cores are still stopped. Each owns a separate JIT; never
@@ -1098,7 +1108,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                   game_upscaling,
                                                   config.material_capture_menu, config.hunt_menu,
                                                   !game_frame.pixels.empty(),
-                                                  LoadGameRecoveryProfile(program_id)},
+                                                  LoadGameRecoveryProfile(program_id),
+                                                  LoadGameResolutionSetup(program_id, Settings::values.resolution_setup.GetValue())},
                                  program_id != 0);
                     if (game_title.empty()) {
                         std::string title;
@@ -1329,6 +1340,19 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     // new filter, so the change is seen at once.
                     capture_frame();
                     WriteDiag("menu: upscaling " + I18n::ToUtf8(I18n::Tr(UpscalingText(upscaling))));
+                }
+                if (result == GameMenuResult::ResolutionChanged) {
+                    const Settings::ResolutionSetup setup = menu->Settings().resolution_setup;
+                    if (program_id != 0 && !SaveGameResolutionSetup(program_id, setup)) {
+                        WriteDiag("menu: per-game resolution scale could not be saved");
+                    }
+                    system.GPU().RunOnGpuThread([setup] {
+                        Settings::values.resolution_setup.SetValue(setup);
+                        Settings::TranslateResolutionInfo(setup, Settings::values.resolution_info);
+                    });
+                    capture_frame();
+                    WriteDiag("menu: internal resolution setup " +
+                              std::to_string(static_cast<int>(setup)) + " applied");
                 }
                 if (result == GameMenuResult::FullScreen) {
                     g_fullscreen_request.store(menu->Settings().fullscreen ? 1 : 0);

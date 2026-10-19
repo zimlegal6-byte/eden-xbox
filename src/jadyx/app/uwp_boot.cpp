@@ -946,13 +946,27 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             .guest_frames = system.GetPerfStats().TotalGameFrames(),
         };
         auto recovery_window_start = recovery_before.time;
+        bool recovery_diagnostic_armed = false;
 
         for (u32 tick = 1;; ++tick) {
             std::this_thread::sleep_for(TICK);
             play_session.Tick(!menu);
 
             const auto recovery_now = std::chrono::steady_clock::now();
-            if (recovery_now - recovery_window_start >= Jadyx::Recovery::ObservationWindow) {
+            // A manual diagnostic is measured only after the player resumes the guest, never
+            // while the overlay itself has paused the game.
+            if (!menu && recovery_diagnostic_armed) {
+                recovery_before = Jadyx::Recovery::Sample{
+                    .time = recovery_now,
+                    .presented_frames = D3D12::SuccessfulPresentCalls(),
+                    .guest_frames = system.GetPerfStats().TotalGameFrames(),
+                };
+                recovery_window_start = recovery_now;
+                recovery_diagnostic_armed = false;
+                WriteDiag("black-screen manual diagnostic observation started title=" +
+                          std::to_string(program_id));
+            }
+            if (!menu && recovery_now - recovery_window_start >= Jadyx::Recovery::ObservationWindow) {
                 Jadyx::Recovery::Sample recovery_after{
                     .time = recovery_now,
                     .presented_frames = D3D12::SuccessfulPresentCalls(),
@@ -1270,15 +1284,10 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     }
                 }
                 if (result == GameMenuResult::RecoveryDiagnosticRequested) {
-                    recovery_before = Jadyx::Recovery::Sample{
-                        .time = std::chrono::steady_clock::now(),
-                        .presented_frames = D3D12::SuccessfulPresentCalls(),
-                        .guest_frames = system.GetPerfStats().TotalGameFrames(),
-                    };
-                    recovery_window_start = recovery_before.time;
+                    recovery_diagnostic_armed = true;
                     menu->SetRecoveryNote(L"Diagnóstico armado: retome e jogue por 12 segundos");
                     WriteDiag("black-screen manual diagnostic armed title=" + std::to_string(program_id) +
-                              "; resume gameplay for at least 12 seconds; no settings changed");
+                              "; observation begins after resume and lasts at least 12 seconds; no settings changed");
                 }
                 if (result == GameMenuResult::PerformanceStatsChanged) {
                     auto settings = LoadSystemSettings();

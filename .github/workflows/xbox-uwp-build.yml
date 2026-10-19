@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - ci/github-actions-xbox-build
+      - feat/black-screen-auto-recovery
   push:
     branches:
       - ci/github-actions-xbox-build

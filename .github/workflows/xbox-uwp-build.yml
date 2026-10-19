@@ -12,6 +12,7 @@ on:
       - feat/black-screen-auto-recovery
       - feat/in-game-graphics-performance-menu
       - improvements/per-game-applet-compatibility
+      - feat/auto-import-sibling-game-updates
 
 permissions:
   contents: read

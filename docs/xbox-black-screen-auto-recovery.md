@@ -1,6 +1,6 @@
 # Xbox black-screen diagnosis and automatic recovery
 
-Status: implementation in progress. `src/jadyx/app/black_screen_recovery.h` now contains the bounded profile sequence and telemetry-based result evaluator. It is a first code component only: it is not yet wired into the UWP launch/render loop, does not yet apply profiles, and has not been built or tested on Xbox hardware.
+Status: implementation in progress. The evaluator is connected to the UWP loop, successful DXGI presents and guest-frame progress are logged in 12-second observation windows. The in-game menu has a **Recuperação do jogo** page and a manual diagnostic action. Saved per-title profile 1 extends observation to 30 seconds; profile 3 enables the existing force-swap-interval-one diagnostic at runtime. Synchronous presentation remains unavailable because the renderer's presentation manager is created with a startup-only mode. No automatic restart, shader-cache deletion, or self-learning is implemented. This branch still needs a successful build and Series S validation.
 
 ## Goal
 
@@ -39,16 +39,16 @@ Measure presented frames over a monotonic time interval; report average FPS and 
 
 ## UI/report
 
-Show attempt number, profile used, result classification, first-frame time, FPS/frame-time, and a short probable-cause explanation with confidence (low/medium/high). Offer `Retry`, `Stop`, `Restore original settings`, and `Export report`.
+Open the in-game menu by holding **View + Menu** for about one second. The quick menu contains **Recuperação do jogo**, with `Executar diagnóstico` and a per-title profile selector. The manual diagnostic arms a fresh observation window only after gameplay resumes, so time spent paused in the overlay is not counted as gameplay. Current telemetry reports successful DXGI Present calls and guest-frame progress; it cannot verify that the pixels are non-black, and it does not reliably classify audio-only or input progress. The full attempt/restore/export workflow remains future work.
 
 ## Implementation sequence
 
-1. [In progress] Add a bounded recovery evaluator and explicit result states (`src/jadyx/app/black_screen_recovery.h`). Next, instrument the existing UWP render/present path and connect it to a reliable presented-frame counter.
-2. Wire the evaluator into a bounded watchdog and diagnostic report, initially without changing settings automatically.
-3. Add a small recovery controller using existing supported settings and cache APIs.
-4. Add FPS/performance profiles only after verifying which options actually affect this UWP build.
-5. Build and test on Xbox Series S. A GitHub Actions compile cannot validate rendering or gameplay.
-6. Validate with Luigi's Mansion 3 first and record results. Do not mark a title fixed until tested on hardware.
+1. [Partial] Add the evaluator and explicit result states (`src/jadyx/app/black_screen_recovery.h`).
+2. [Partial] Connect telemetry and add the manual per-game diagnostic page.
+3. [Partial] Persist profiles by Program ID. Profile 1 changes the observation window; profile 3 toggles the existing swap-interval diagnostic. Profile 2 is intentionally unavailable until renderer lifecycle changes can be made safely.
+4. [Next] Build on GitHub Actions, resolve compile/package issues, then install on Series S.
+5. Validate the menu and diagnostic flow on hardware. The user has reported that Super Mario Bros. Wonder displayed an image and was playable in their current setup; that is a useful manual observation, not proof that this branch fixed it.
+6. Continue toward bounded recovery attempts, verified visible-pixel detection, and reliable restore/stop controls.
 
 ## Acceptance criteria
 

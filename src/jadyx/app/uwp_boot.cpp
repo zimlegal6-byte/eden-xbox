@@ -1269,6 +1269,17 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                   " for title " + std::to_string(program_id));
                     }
                 }
+                if (result == GameMenuResult::RecoveryDiagnosticRequested) {
+                    recovery_before = Jadyx::Recovery::Sample{
+                        .time = std::chrono::steady_clock::now(),
+                        .presented_frames = D3D12::SuccessfulPresentCalls(),
+                        .guest_frames = system.GetPerfStats().TotalGameFrames(),
+                    };
+                    recovery_window_start = recovery_before.time;
+                    menu->SetRecoveryNote(L"Diagnóstico armado: retome e jogue por 12 segundos");
+                    WriteDiag("black-screen manual diagnostic armed title=" + std::to_string(program_id) +
+                              "; resume gameplay for at least 12 seconds; no settings changed");
+                }
                 if (result == GameMenuResult::PerformanceStatsChanged) {
                     auto settings = LoadSystemSettings();
                     settings.show_performance_stats = menu->Settings().show_performance_stats;

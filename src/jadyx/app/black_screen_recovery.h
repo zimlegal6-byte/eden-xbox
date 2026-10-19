@@ -24,12 +24,26 @@ enum class Result {
     Inconclusive,
 };
 
-enum class Profile {
-    Baseline,
-    LongerFirstFrameWait,
-    SynchronousPresent,
-    ForceSwapIntervalOne,
+// Numeric IDs are persisted per Switch Program ID; never reorder or reuse these values.
+enum class Profile : std::uint32_t {
+    Baseline = 0,
+    LongerFirstFrameWait = 1,
+    SynchronousPresent = 2,
+    ForceSwapIntervalOne = 3,
 };
+
+constexpr std::uint32_t Id(Profile profile) noexcept {
+    return static_cast<std::uint32_t>(profile);
+}
+
+constexpr Profile ProfileFromId(std::uint32_t id) noexcept {
+    switch (id) {
+    case 1: return Profile::LongerFirstFrameWait;
+    case 2: return Profile::SynchronousPresent;
+    case 3: return Profile::ForceSwapIntervalOne;
+    default: return Profile::Baseline;
+    }
+}
 
 struct Sample {
     std::chrono::steady_clock::time_point time{};

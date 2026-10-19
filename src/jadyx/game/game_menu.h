@@ -293,7 +293,8 @@ private:
                                                    : settings.recovery_note,
                     UiIcon::Display};
         case RecoveryProfile: {
-            static constexpr const wchar_t* names[] = {L"Padrão", L"Aguardar mais", L"Apresentação síncrona", L"Intervalo 1"};
+            static constexpr const wchar_t* names[] = {
+                L"Padrão", L"Aguardar mais", L"Síncrona (indisponível)", L"Intervalo 1"};
             const auto id = std::min<std::uint32_t>(settings.recovery_profile, 3);
             return {L"Perfil salvo", names[id], Choice,
                     L"Selecionar perfil para este jogo", UiIcon::Display};
@@ -368,7 +369,15 @@ private:
         case RecoveryDiagnose:
             return confirm ? GameMenuResult::RecoveryDiagnosticRequested : GameMenuResult::None;
         case RecoveryProfile:
-            settings.recovery_profile = (settings.recovery_profile + (back ? 3 : 1)) % 4;
+            // Synchronous presentation requires a renderer lifecycle change and is deliberately
+            // not offered as an active profile until that path can be switched safely.
+            if (back) {
+                settings.recovery_profile = settings.recovery_profile == 3 ? 1
+                                            : settings.recovery_profile == 1 ? 0 : 3;
+            } else {
+                settings.recovery_profile = settings.recovery_profile == 0 ? 1
+                                            : settings.recovery_profile == 1 ? 3 : 0;
+            }
             return GameMenuResult::RecoveryProfileChanged;
         }
         return GameMenuResult::None;

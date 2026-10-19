@@ -1,6 +1,6 @@
 # Xbox black-screen diagnosis and automatic recovery
 
-Status: implementation plan/scaffold. This document is not proof that automatic recovery is already implemented or tested.
+Status: implementation in progress. `src/jadyx/app/black_screen_recovery.h` now contains the bounded profile sequence and telemetry-based result evaluator. It is a first code component only: it is not yet wired into the UWP launch/render loop, does not yet apply profiles, and has not been built or tested on Xbox hardware.
 
 ## Goal
 
@@ -43,8 +43,8 @@ Show attempt number, profile used, result classification, first-frame time, FPS/
 
 ## Implementation sequence
 
-1. Instrument the existing UWP render/present path and connect it to a reliable presented-frame counter.
-2. Add bounded watchdog/classification and diagnostic report, without changing settings automatically.
+1. [In progress] Add a bounded recovery evaluator and explicit result states (`src/jadyx/app/black_screen_recovery.h`). Next, instrument the existing UWP render/present path and connect it to a reliable presented-frame counter.
+2. Wire the evaluator into a bounded watchdog and diagnostic report, initially without changing settings automatically.
 3. Add a small recovery controller using existing supported settings and cache APIs.
 4. Add FPS/performance profiles only after verifying which options actually affect this UWP build.
 5. Build and test on Xbox Series S. A GitHub Actions compile cannot validate rendering or gameplay.

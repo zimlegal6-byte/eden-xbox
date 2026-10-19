@@ -34,6 +34,10 @@ std::wstring GameResolutionSetupKey(std::uint64_t program_id) {
     return L"game_resolution_setup_" + std::to_wstring(program_id);
 }
 
+std::wstring GamePlayerSelectAppletModeKey(std::uint64_t program_id) {
+    return L"game_player_select_applet_mode_" + std::to_wstring(program_id);
+}
+
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
 template <typename T>
@@ -175,6 +179,30 @@ bool SaveGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup
         const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
         values.Insert(winrt::hstring{GameResolutionSetupKey(program_id)},
                       winrt::box_value(static_cast<int32_t>(setup)));
+        return true;
+    } catch (...) { return false; }
+}
+
+Settings::AppletMode LoadGamePlayerSelectAppletMode(std::uint64_t program_id, Settings::AppletMode fallback) {
+    if (program_id == 0) return fallback;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        const winrt::hstring key{GamePlayerSelectAppletModeKey(program_id)};
+        if (!values.HasKey(key)) return fallback;
+        const auto raw = winrt::unbox_value<int32_t>(values.Lookup(key));
+        if (raw == static_cast<int32_t>(Settings::AppletMode::HLE)) return Settings::AppletMode::HLE;
+        if (raw == static_cast<int32_t>(Settings::AppletMode::LLE)) return Settings::AppletMode::LLE;
+        return fallback;
+    } catch (...) { return fallback; }
+}
+
+bool SaveGamePlayerSelectAppletMode(std::uint64_t program_id, Settings::AppletMode mode) {
+    if (program_id == 0 || (mode != Settings::AppletMode::HLE && mode != Settings::AppletMode::LLE))
+        return false;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        values.Insert(winrt::hstring{GamePlayerSelectAppletModeKey(program_id)},
+                      winrt::box_value(static_cast<int32_t>(mode)));
         return true;
     } catch (...) { return false; }
 }

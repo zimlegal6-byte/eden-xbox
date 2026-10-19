@@ -1072,7 +1072,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                   pulse_identity.has_value(),
                                                   game_upscaling,
                                                   config.material_capture_menu, config.hunt_menu,
-                                                  !game_frame.pixels.empty()},
+                                                  !game_frame.pixels.empty(),
+                                                  LoadGameRecoveryProfile(program_id)},
                                  program_id != 0);
                     if (game_title.empty()) {
                         std::string title;
@@ -1257,6 +1258,16 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     options.swap_face_buttons = menu->Settings().swap_face_buttons;
                     options.deadzone = menu->Settings().deadzone;
                     input.SetOptions(options);
+                }
+                if (result == GameMenuResult::RecoveryProfileChanged) {
+                    if (program_id == 0 ||
+                        !SaveGameRecoveryProfile(program_id, menu->Settings().recovery_profile)) {
+                        WriteDiag("menu: recovery profile could not be saved (no title ID or storage error)");
+                    } else {
+                        WriteDiag("menu: saved per-game recovery profile " +
+                                  std::to_string(menu->Settings().recovery_profile) +
+                                  " for title " + std::to_string(program_id));
+                    }
                 }
                 if (result == GameMenuResult::PerformanceStatsChanged) {
                     auto settings = LoadSystemSettings();

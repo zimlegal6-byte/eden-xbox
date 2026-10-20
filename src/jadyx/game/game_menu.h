@@ -111,6 +111,7 @@ struct GameMenuSettings {
     std::wstring recovery_note{};
     /// The real renderer resolution factor; lower values can improve performance at reduced clarity.
     Settings::ResolutionSetup resolution_setup{Settings::ResolutionSetup::Res1X};
+    bool adaptive_resolution{};
 };
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
@@ -121,6 +122,7 @@ enum class GameMenuResult : std::uint8_t {
     RecoveryProfileChanged,
     RecoveryDiagnosticRequested,
     ResolutionChanged,
+    AdaptiveResolutionChanged,
     CaptureGraphics,
     CapturePerformance,
     Screenshot,
@@ -143,7 +145,7 @@ struct GameMenuRow {
 class GameMenu {
 public:
     enum Item : std::size_t {
-        Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, ResolutionScale, PerformanceStats, Library,
+        Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, ResolutionScale, AdaptiveResolution, PerformanceStats, Library,
         CaptureGraphics, CapturePerformance, Screenshot, ControllerPage, DisplayPage, RecoveryPage, RecoveryDiagnose, RecoveryProfile,
     };
     enum class Page : std::uint8_t { Quick, Controller, Display, Recovery };
@@ -158,7 +160,7 @@ public:
         if (settings.performance_capture) quick.push_back(CapturePerformance);
         quick.push_back(Library);
         controller = {Style, FaceButtons, Deadzone};
-        display = {ImageUpscaling, ResolutionScale, PerformanceStats};
+        display = {ImageUpscaling, ResolutionScale, AdaptiveResolution, PerformanceStats};
         recovery = {RecoveryDiagnose, RecoveryProfile};
         if (settings.can_fullscreen) display.push_back(FullScreen);
     }
@@ -294,6 +296,9 @@ private:
             return {L"Resolução interna", names[index], Choice,
                     L"Valores baixos podem ajudar o FPS; imagem pode perder nitidez", UiIcon::Display};
         }
+        case AdaptiveResolution:
+            return {L"Resolução adaptativa", Tr(settings.adaptive_resolution ? Text::Yes : Text::No), Choice,
+                    L"Ajusta a escala gradualmente conforme o tempo de GPU", UiIcon::Display};
         case PerformanceStats:
             return {Tr(Text::PerformanceStats), Tr(settings.show_performance_stats ? Text::Yes : Text::No), Choice};
         case FullScreen:
@@ -378,6 +383,9 @@ private:
             settings.resolution_setup = static_cast<Settings::ResolutionSetup>(index);
             return GameMenuResult::ResolutionChanged;
         }
+        case AdaptiveResolution:
+            settings.adaptive_resolution = !settings.adaptive_resolution;
+            return GameMenuResult::AdaptiveResolutionChanged;
         case PerformanceStats:
             settings.show_performance_stats = !settings.show_performance_stats;
             return GameMenuResult::PerformanceStatsChanged;

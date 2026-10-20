@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - master
+      - build-42-graphics-updates-ptbr
     paths:
       - '.github/workflows/build-jadyx-xbox.yml'
       - 'src/**'

@@ -1395,6 +1395,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                             Settings::values.resolution_setup.SetValue(setup);
                             Settings::TranslateResolutionInfo(setup, Settings::values.resolution_info);
                         });
+                        menu->SetResolutionSetup(adaptive_ceiling_setup);
                     }
                     WriteDiag(std::string{"adaptive-resolution: "} +
                               (adaptive_resolution_enabled ? "enabled" : "disabled"));

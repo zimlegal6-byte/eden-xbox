@@ -984,8 +984,12 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             play_session.Tick(!menu);
 
             const auto adaptive_now = std::chrono::steady_clock::now();
-            if (!menu && adaptive_resolution_enabled &&
-                adaptive_now - adaptive_window_start >= std::chrono::seconds{5}) {
+            if (menu || !adaptive_resolution_enabled) {
+                // Never include paused-menu work in the guest's GPU-time window.
+                adaptive_gpu_busy_before = VideoCore::Perf::ReadCounter(VideoCore::Perf::Counter::GpuBusyUs);
+                adaptive_guest_frames_before = VideoCore::Perf::ReadCounter(VideoCore::Perf::Counter::GuestFramesQueued);
+                adaptive_window_start = adaptive_now;
+            } else if (adaptive_now - adaptive_window_start >= std::chrono::seconds{5}) {
                 const u64 gpu_busy_now = VideoCore::Perf::ReadCounter(VideoCore::Perf::Counter::GpuBusyUs);
                 const u64 guest_frames_now = VideoCore::Perf::ReadCounter(VideoCore::Perf::Counter::GuestFramesQueued);
                 const u64 gpu_delta = gpu_busy_now >= adaptive_gpu_busy_before
@@ -998,7 +1002,6 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                         Settings::values.resolution_setup.SetValue(setup);
                         Settings::TranslateResolutionInfo(setup, Settings::values.resolution_info);
                     });
-                    capture_frame();
                     WriteDiag("adaptive-resolution: title=" + std::to_string(program_id) +
                               " gpu_us_per_guest_frame=" +
                               std::to_string(frames_delta ? gpu_delta / frames_delta : 0) +

@@ -974,7 +974,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         // Adaptive scaling runs at five-second cadence, outside the render hot path. It uses
         // renderer GPU timestamp totals and guest frame counts rather than guessing from FPS
         // alone, which would incorrectly punish games whose native target is 30 FPS.
-        Jadyx::AdaptiveResolutionController adaptive_resolution{game_resolution_setup};
+        Settings::ResolutionSetup adaptive_ceiling_setup = game_resolution_setup;
+        Jadyx::AdaptiveResolutionController adaptive_resolution{adaptive_ceiling_setup};
         auto adaptive_window_start = std::chrono::steady_clock::now();
         u64 adaptive_gpu_busy_before = VideoCore::Perf::ReadCounter(VideoCore::Perf::Counter::GpuBusyUs);
         u64 adaptive_guest_frames_before = VideoCore::Perf::ReadCounter(VideoCore::Perf::Counter::GuestFramesQueued);
@@ -1149,7 +1150,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                   !game_frame.pixels.empty(),
                                                   LoadGameRecoveryProfile(program_id),
                                                   L"",
-                                                  LoadGameResolutionSetup(program_id, Settings::values.resolution_setup.GetValue()),
+                                                  Settings::values.resolution_setup.GetValue(),
                                                   adaptive_resolution_enabled},
                                  program_id != 0);
                     if (game_title.empty()) {
@@ -1387,11 +1388,20 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     if (program_id == 0 || !SaveGameAdaptiveResolution(program_id, adaptive_resolution_enabled)) {
                         WriteDiag("menu: adaptive resolution preference could not be saved");
                     }
+                    if (!adaptive_resolution_enabled) {
+                        // Disabling adaptive mode restores the last manual choice rather than
+                        // leaving the title at a temporary lower scale.
+                        system.GPU().RunOnGpuThread([setup = adaptive_ceiling_setup] {
+                            Settings::values.resolution_setup.SetValue(setup);
+                            Settings::TranslateResolutionInfo(setup, Settings::values.resolution_info);
+                        });
+                    }
                     WriteDiag(std::string{"adaptive-resolution: "} +
                               (adaptive_resolution_enabled ? "enabled" : "disabled"));
                 }
                 if (result == GameMenuResult::ResolutionChanged) {
                     const Settings::ResolutionSetup setup = menu->Settings().resolution_setup;
+                    adaptive_ceiling_setup = setup;
                     adaptive_resolution.SetCeiling(setup);
                     if (program_id != 0 && !SaveGameResolutionSetup(program_id, setup)) {
                         WriteDiag("menu: per-game resolution scale could not be saved");

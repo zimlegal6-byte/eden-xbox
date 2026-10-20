@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <optional>
 
-#include "common/settings.h"
+#include "common/settings_enums.h"
 
 namespace Jadyx {
 
@@ -21,7 +21,6 @@ public:
     void SetCeiling(Setup setup) {
         const int value = Clamp(Index(setup));
         ceiling = static_cast<Setup>(value);
-        if (Index(current_hint) > value) current_hint = ceiling;
         slow_windows = 0;
         fast_windows = 0;
     }
@@ -53,13 +52,11 @@ public:
         // restoring it. Hysteresis prevents the scale from oscillating around one threshold.
         if (slow_windows >= 2 && current_index > MinIndex) {
             slow_windows = fast_windows = 0;
-            current_hint = static_cast<Setup>(current_index - 1);
-            return current_hint;
+            return static_cast<Setup>(current_index - 1);
         }
         if (fast_windows >= 6 && current_index < ceiling_index) {
             slow_windows = fast_windows = 0;
-            current_hint = static_cast<Setup>(current_index + 1);
-            return current_hint;
+            return static_cast<Setup>(current_index + 1);
         }
         return std::nullopt;
     }
@@ -74,7 +71,6 @@ private:
     static int Clamp(int value) { return value < MinIndex ? MinIndex : value > MaxIndex ? MaxIndex : value; }
 
     Setup ceiling;
-    Setup current_hint{Setup::Res1X};
     unsigned slow_windows{};
     unsigned fast_windows{};
 };

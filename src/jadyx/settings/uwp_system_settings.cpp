@@ -34,6 +34,10 @@ std::wstring GameResolutionSetupKey(std::uint64_t program_id) {
     return L"game_resolution_setup_" + std::to_wstring(program_id);
 }
 
+std::wstring GameAdaptiveResolutionKey(std::uint64_t program_id) {
+    return L"game_adaptive_resolution_" + std::to_wstring(program_id);
+}
+
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
 template <typename T>
@@ -175,6 +179,25 @@ bool SaveGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup
         const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
         values.Insert(winrt::hstring{GameResolutionSetupKey(program_id)},
                       winrt::box_value(static_cast<int32_t>(setup)));
+        return true;
+    } catch (...) { return false; }
+}
+
+bool LoadGameAdaptiveResolution(std::uint64_t program_id, bool fallback) {
+    if (program_id == 0) return fallback;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        const winrt::hstring key{GameAdaptiveResolutionKey(program_id)};
+        if (!values.HasKey(key)) return fallback;
+        return winrt::unbox_value<bool>(values.Lookup(key));
+    } catch (...) { return fallback; }
+}
+
+bool SaveGameAdaptiveResolution(std::uint64_t program_id, bool enabled) {
+    if (program_id == 0) return false;
+    try {
+        const auto values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        values.Insert(winrt::hstring{GameAdaptiveResolutionKey(program_id)}, winrt::box_value(enabled));
         return true;
     } catch (...) { return false; }
 }

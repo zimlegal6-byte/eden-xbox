@@ -1,0 +1,52 @@
+name: Publish Build 41 Release
+
+on:
+  push:
+    branches:
+      - feat/adaptive-resolution-controller
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Build 41 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jadyx-xbox-uwp-41
+          path: release-files
+          repository: zimlegal6-byte/eden-xbox
+          run-id: 39419033901
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package public ZIP
+        run: |
+          test -n "$(find release-files -type f -print -quit)"
+          cd release-files
+          zip -r ../jadyx-xbox-uwp-41.zip .
+          cd ..
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jadyx-xbox-uwp-41
+          name: Jadyx Xbox UWP Build 41 (experimental)
+          target_commitish: feat/adaptive-resolution-controller
+          prerelease: true
+          make_latest: false
+          files: jadyx-xbox-uwp-41.zip
+          body: |
+            Experimental Jadyx Xbox UWP Build 41.
+
+            Includes the in-game graphics/performance controls and adaptive internal-resolution controller from the adaptive-resolution branch.
+
+            IMPORTANT:
+            - Built successfully by GitHub Actions, but not yet validated on a physical Xbox.
+            - Adaptive resolution is a heuristic and may not improve every game's FPS.
+            - Automatic sibling NSP update import from Build 33 is NOT included in this build.
+            - Back up saves and existing emulator data before installing or updating.
+            - This is a community/experimental build, not an official Eden release.

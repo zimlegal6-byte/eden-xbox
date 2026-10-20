@@ -33,6 +33,10 @@ bool SaveGameUpscaling(std::uint64_t program_id, Upscaling upscaling);
 Settings::ResolutionSetup LoadGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup fallback);
 bool SaveGameResolutionSetup(std::uint64_t program_id, Settings::ResolutionSetup setup);
 
+// Per-title adaptive resolution preference; stored separately from game saves.
+bool LoadGameAdaptiveResolution(std::uint64_t program_id, bool fallback = false);
+bool SaveGameAdaptiveResolution(std::uint64_t program_id, bool enabled);
+
 // Per-title black-screen recovery profile, stored independently from upscaling and game saves.
 // Values are the stable numeric Profile IDs defined by the recovery controller (0..3).
 // Invalid/missing values return fallback; no game content or save data is touched.

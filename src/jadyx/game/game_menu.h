@@ -276,6 +276,7 @@ private:
                     L"Perfil por jogo · diagnóstico de tela preta", UiIcon::Display};
         case DisplayPage: {
             std::wstring detail = Tr(UpscalingText(settings.upscaling));
+            if (settings.adaptive_resolution) detail += L" · Adaptativa";
             if (settings.show_performance_stats) detail += L" · " + Tr(Text::MenuStatsShort);
             return {Tr(Text::MenuDisplay), {}, Page, detail, UiIcon::Display};
         }

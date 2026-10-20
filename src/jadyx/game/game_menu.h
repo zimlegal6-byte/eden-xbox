@@ -235,6 +235,7 @@ public:
     [[nodiscard]] std::size_t Selected() const { return selected; }
     [[nodiscard]] Item SelectedItem() const { return Items()[selected]; }
     [[nodiscard]] const GameMenuSettings& Settings() const { return settings; }
+    void SetResolutionSetup(Settings::ResolutionSetup setup) { settings.resolution_setup = setup; }
 
 private:
     static std::wstring Tr(I18n::Text id) { return std::wstring{I18n::Tr(id)}; }

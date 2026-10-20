@@ -19,7 +19,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 > yourself. It contains no keys, firmware or games and never will: use only the ones you dumped
 > from a console and games you own. See [Legal](#legal).
 
-**Contents:** [Progress](#progress) ([the memory wall](#the-memory-wall)) ·
+❤️ **Apoie o projeto:** [Contribua por Pix](APOIE.md) · Toda contribuição é voluntária.\n\n**Contents:** [Progress](#progress) ([the memory wall](#the-memory-wall)) ·
 [Architecture](#architecture) · [Running it on a console](#running-it-on-a-console) ·
 [Building](#building) · [Documentation](#documentation) · [Acknowledgements](#acknowledgements) ·
 [Legal](#legal) · [License](#license)

@@ -136,6 +136,10 @@ void Manager::Run(Request request, std::stop_token stop) {
         }
         if (result == Mods::Web::DownloadError::Network && local.stop_requested()) result = Mods::Web::DownloadError::Cancelled;
         error = Convert(result);
+        if (error == Error::None && request.size != 0 && fs::file_size(part, ec) != request.size) {
+            fs::remove(part, ec);
+            error = Error::Checksum;
+        }
         if (error == Error::None) {
             fs::rename(part, target, ec);
             if (ec) error = Error::Write;

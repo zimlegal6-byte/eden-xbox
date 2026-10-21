@@ -97,6 +97,9 @@ add_executable(jadyx WIN32
     cheats/cheats_page.h
     cheats/cheats_view.cpp
     cheats/cheats_view.h
+    # Direct downloads from user-authorized HTTPS sources into LocalState/games.
+    game_downloads/game_downloads.cpp
+    game_downloads/game_downloads.h
     # Per-game mods: archives (zip, 7z, rar) read through libarchive, installed into load/, with
     # their order, conflicts and on/off state handed to the loader at boot; and the store
     # (GameBanana, the CNX index) that downloads them, resuming and checking each file.

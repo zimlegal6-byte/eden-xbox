@@ -24,7 +24,7 @@ bool SafeFilename(const std::string& name) {
     if (dot == std::string::npos) return false;
     std::string ext = name.substr(dot);
     std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return ext == ".nsp" || ext == ".xci" || ext == ".nro";
+    return ext == ".nro";
 }
 bool SafeRequest(const Request& r) {
     if (r.key.empty() || r.key.size() > 128 || r.title.empty() || !SafeFilename(r.filename)) return false;
@@ -59,7 +59,7 @@ Manager::~Manager() { CancelAll(); }
 
 bool Manager::Enqueue(Request request, std::string& error) {
     if (!SafeRequest(request)) {
-        error = "Use a direct HTTPS URL and a safe .nsp, .xci or .nro filename.";
+        error = "Use a direct HTTPS URL and a safe .nro homebrew filename.";
         return false;
     }
     {

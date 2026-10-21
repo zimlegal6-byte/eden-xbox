@@ -23,7 +23,7 @@ enum class Error : std::uint8_t { None, InvalidRequest, Space, Network, Checksum
 struct Request {
     std::string key;
     std::string title;
-    std::string filename;  // Basename only; .nro.
+    std::string filename;  // Basename only; .nro extension.
     std::string url;       // Direct HTTPS URL from a source authorizing the download.
     std::string md5;       // Optional 32-character MD5 supplied by the source.
     std::uint64_t size{};  // Expected size, zero when unknown.

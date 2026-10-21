@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
-// Downloads a user-supplied, authorized NSP/XCI/NRO URL into the emulator's own LocalState\\games.
+// Downloads a user-supplied, authorized homebrew NRO URL into the emulator's own LocalState\\games.
 // This deliberately has no third-party game catalog, mirror scraper, login bypass, or source-specific
 // resolver. The existing Web::Download implementation provides resumable .part files, cancellation,
 // size caps, and optional checksum validation.
@@ -23,7 +23,7 @@ enum class Error : std::uint8_t { None, InvalidRequest, Space, Network, Checksum
 struct Request {
     std::string key;
     std::string title;
-    std::string filename;  // Basename only; .nsp, .xci or .nro.
+    std::string filename;  // Basename only; .nro.
     std::string url;       // Direct HTTPS URL from a source authorizing the download.
     std::string md5;       // Optional 32-character MD5 supplied by the source.
     std::uint64_t size{};  // Expected size, zero when unknown.

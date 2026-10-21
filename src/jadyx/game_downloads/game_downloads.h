@@ -46,7 +46,7 @@ public:
     void CancelAll();
     [[nodiscard]] std::vector<Status> GetStatus() const;
     [[nodiscard]] bool Active() const;
-    std::optional<Finished> TakeFinished();
+    /// Consumes one completion and removes its status entry, allowing a later retry.\n    std::optional<Finished> TakeFinished();
 private:
     void Run(Request request, std::stop_token stop);
     std::filesystem::path games_folder;

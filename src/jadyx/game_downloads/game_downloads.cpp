@@ -85,7 +85,10 @@ bool Manager::Active() const { const std::scoped_lock lock{mutex}; return !statu
 std::optional<Finished> Manager::TakeFinished() {
     const std::scoped_lock lock{mutex};
     if (finished.empty()) return std::nullopt;
-    auto item = std::move(finished.front()); finished.pop_front(); return item;
+    auto item = std::move(finished.front());
+    finished.pop_front();
+    std::erase_if(status, [&](const Status& s) { return s.key == item.request.key; });
+    return item;
 }
 
 void Manager::Run(Request request, std::stop_token stop) {
